@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Cyber Snake Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: #020208;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 480px;
+      max-height: 900px;
+      background: radial-gradient(circle at center, #0f1026 0%, #020208 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 0 30px rgba(0, 242, 254, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* لوحة المعلومات العلوية */
+    #hud {
+      width: 100%;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .hud-panel {
+      background: rgba(15, 20, 45, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #00f2fe;
+      box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+    }
+
+    /* شبكة اللعبة */
+    .canvas-wrapper {
+      position: relative;
+      width: 350px;
+      height: 350px;
+      max-width: 88vw;
+      max-height: 88vw;
+      border: 2px solid rgba(0, 242, 254, 0.4);
+      border-radius: 16px;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.25);
+      background: #020208;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* أزرار التحكم الحديثة */
+    #controls {
+      width: 100%;
+      height: 210px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 25px;
+      z-index: 5;
+    }
+
+    .ctrl-btn {
+      position: absolute;
+      width: 65px;
+      height: 65px;
+      background: rgba(15, 20, 45, 0.85);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(0, 242, 254, 0.6);
+      border-radius: 18px;
+      color: #00f2fe;
+      font-size: 1.6rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+      transition: all 0.1s ease;
+    }
+
+    .ctrl-btn:active {
+      background: rgba(0, 242, 254, 0.35);
+      transform: scale(0.92);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+    }
+
+    /* تباعد الأزرار */
+    #btn-up { top: 5px; left: 50%; transform: translateX(-50%); }
+    #btn-left { top: 70px; left: calc(50% - 90px); }
+    #btn-right { top: 70px; left: calc(50% + 25px); }
+    #btn-down { top: 135px; left: 50%; transform: translateX(-50%); }
+
+    /* الشاشات التفاعلية */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 5, 16, 0.9);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .overlay h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(45deg, #00f2fe, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(0, 242, 254, 0.5);
+    }
+
+    .overlay p {
+      font-size: 1.05rem;
+      margin-bottom: 25px;
+      color: #a0aec0;
+      line-height: 1.6;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      border: none;
+      color: #000;
+      padding: 14px 40px;
+      font-size: 1.2rem;
+      font-weight: 800;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.5);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <div id="hud">
+      <div class="hud-panel">⭐ النقاط: <span id="score-val">0</span></div>
+      <div class="hud-panel">🏆 الأفضل: <span id="high-score-val">0</span></div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <!-- أزرار التحكم -->
+    <div id="controls">
+      <div class="ctrl-btn" id="btn-up">▲</div>
+      <div class="ctrl-btn" id="btn-left">◀</div>
+      <div class="ctrl-btn" id="btn-right">▶</div>
+      <div class="ctrl-btn" id="btn-down">▼</div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+      <h1>CYBER SNAKE</h1>
+      <p>الثعبان سيكون ثابتاً عند البداية.<br>استخدم الأسهم ⌨️ أو الأزرار 📱 للتحرك!</p>
+      <button class="btn" id="start-btn">انطلاق</button>
+    </div>
+
+    <div id="game-over-screen" class="overlay hidden">
+      <h1 style="background: linear-gradient(45deg, #ff416c, #ff4b2b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">اصطدم بالحائط!</h1>
+      <p id="final-score" style="font-size: 1.2rem; color: #fff; font-weight: bold; margin-bottom: 20px;">النتيجة: 0</p>
+      <button class="btn" id="restart-btn">إعادة المحاولة</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreValEl = document.getElementById('score-val');
+    const highScoreValEl = document.getElementById('high-score-val');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const finalScoreEl = document.getElementById('final-score');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    const gridSize = 20;
+    const tileCount = 20;
+    
+    let snake = [];
+    let food = {};
+    let dx = 0;
+    let dy = 0;
+    let score = 0;
+    let highScore = localStorage.getItem('cyber_snake_highscore') || 0;
+    let gameInterval = null;
+    let gameSpeed = 120;
+    let changingDirection = false;
+    let gameStarted = false;
+
+    highScoreValEl.innerText = highScore;
+
+    function resetGame() {
+      snake = [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+      ];
+      dx = 0;
+      dy = 0;
+      gameStarted = false;
+      score = 0;
+      gameSpeed = 120;
+      scoreValEl.innerText = score;
+      spawnFood();
+    }
+
+    function spawnFood() {
+      food = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount),
+        type: Math.random() < 0.15 ? 'gold' : (Math.random() < 0.25 ? 'slow' : 'normal')
+      };
+
+      for (let part of snake) {
+        if (part.x === food.x && part.y === food.y) {
+          spawnFood();
+          break;
+        }
+      }
+    }
+
+    function main() {
+      if (hasGameEnded()) {
+        endGame();
+        return;
+      }
+
+      changingDirection = false;
+      clearCanvas();
+      drawFood();
+      
+      if (gameStarted) {
+        moveSnake();
+      }
+      
+      drawSnake();
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = '#020208';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.strokeStyle = 'rgba(0, 242, 254, 0.03)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < tileCount; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * gridSize, 0);
+        ctx.lineTo(i * gridSize, canvas.height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i * gridSize);
+        ctx.lineTo(canvas.width, i * gridSize);
+        ctx.stroke();
+      }
+    }
+
+    function drawSnake() {
+      snake.forEach((part, index) => {
+        ctx.fillStyle = index === 0 ? '#00f2fe' : '#4facfe';
+        ctx.shadowBlur = index === 0 ? 15 : 5;
+        ctx.shadowColor = '#00f2fe';
+        ctx.fillRect(part.x * gridSize + 1, part.y * gridSize + 1, gridSize - 2, gridSize - 2);
+      });
+      ctx.shadowBlur = 0;
+    }
+
+    function moveSnake() {
+      const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        if (food.type === 'gold') {
+          score += 50;
+        } else if (food.type === 'slow') {
+          score += 20;
+          gameSpeed += 20;
+          clearInterval(gameInterval);
+          gameInterval = setInterval(main, gameSpeed);
+        } else {
+          score += 10;
+        }
+
+        scoreValEl.innerText = score;
+        if (score > highScore) {
+          highScore = score;
+          highScoreValEl.innerText = highScore;
+          localStorage.setItem('cyber_snake_highscore', highScore);
+        }
+        spawnFood();
+      } else {
+        snake.pop();
+      }
+    }
+
+    function drawFood() {
+      ctx.beginPath();
+      const fx = food.x * gridSize + gridSize / 2;
+      const fy = food.y * gridSize + gridSize / 2;
+      
+      if (food.type === 'gold') {
+        ctx.fillStyle = '#ffcc00';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ffcc00';
+      } else if (food.type === 'slow') {
+        ctx.fillStyle = '#3b82f6';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#3b82f6';
+      } else {
+        ctx.fillStyle = '#ff416c';
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#ff416c';
+      }
+
+      ctx.arc(fx, fy, gridSize / 2 - 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function hasGameEnded() {
+      if (!gameStarted) return false;
+      const head = snake[0];
+
+      if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+        return true;
+      }
+
+      for (let i = 1; i < snake.length; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) return true;
+      }
+      return false;
+    }
+
+    function changeDirection(newDx, newDy) {
+      if (changingDirection) return;
+      
+      if (!gameStarted) {
+        gameStarted = true;
+        dx = newDx;
+        dy = newDy;
+        changingDirection = true;
+        return;
+      }
+
+      if (newDx === -dx && newDy === -dy) return;
+
+      dx = newDx;
+      dy = newDy;
+      changingDirection = true;
+    }
+
+    // ربط أزرار الشاشة باللمس وبالماوس لمنع أي تأخير على الهاتف
+    const bindBtn = (id, newDx, newDy) => {
+      const el = document.getElementById(id);
+      
+      const handler = (e) => {
+        if (e.cancelable) e.preventDefault();
+        changeDirection(newDx, newDy);
+      };
+
+      el.addEventListener('touchstart', handler, { passive: false });
+      el.addEventListener('click', handler);
+    };
+
+    bindBtn('btn-up', 0, -1);
+    bindBtn('btn-down', 0, 1);
+    bindBtn('btn-left', -1, 0);
+    bindBtn('btn-right', 1, 0);
+
+    // ربط لوحة المفاتيح للكمبيوتر (مع منع التمرير)
+    window.addEventListener('keydown', e => {
+      const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D'];
+      if (keys.includes(e.key)) {
+        e.preventDefault();
+      }
+
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') changeDirection(0, -1);
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') changeDirection(0, 1);
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') changeDirection(-1, 0);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') changeDirection(1, 0);
+    });
+
+    function startGame() {
+      startScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      resetGame();
+      if (gameInterval) clearInterval(gameInterval);
+      gameInterval = setInterval(main, gameSpeed);
+      clearCanvas();
+      drawFood();
+      drawSnake();
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      finalScoreEl.innerText = 'النتيجة النهائية: ' + score;
+      gameOverScreen.classList.remove('hidden');
+    }
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+  </script>
+</body>
+</html>
